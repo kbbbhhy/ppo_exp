@@ -47,3 +47,4 @@ Run:
 `docker run --runtime=nvidia -it --rm --volume="$PWD"/../Super-mario-bros-PPO-pytorch:/Super-mario-bros-PPO-pytorch --gpus device=0 ppo`
 
 Then inside docker container, you could simply run **train.py** or **test.py** scripts as mentioned above.
+# ppo_exp
