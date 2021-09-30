@@ -54,9 +54,11 @@ def test(opt):
         action = torch.argmax(policy).item()
         state, reward, done, info = env.step(action)
         state = torch.from_numpy(state)
-        env.render()
+        # env.render()
+        print("not get")
         if info["flag_get"]:
             print("World {} stage {} completed".format(opt.world, opt.stage))
+            print("get")
             break
 
 

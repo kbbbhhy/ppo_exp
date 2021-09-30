@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument("--num_local_steps", type=int, default=512)
     parser.add_argument("--num_global_steps", type=int, default=5e6)
     parser.add_argument("--num_processes", type=int, default=8)
-    parser.add_argument("--save_interval", type=int, default=50, help="Number of steps between savings")
+    parser.add_argument("--save_interval", type=int, default=500, help="Number of steps between savings")
     parser.add_argument("--max_actions", type=int, default=200, help="Maximum repetition steps in test phase")
     parser.add_argument("--log_path", type=str, default="tensorboard/ppo_super_mario_bros")
     parser.add_argument("--saved_path", type=str, default="trained_models")
@@ -38,8 +38,8 @@ def get_args():
     return args
 
 
-def train(opt):
-    if torch.cuda.is_available():
+def train(opt,use_cuda=True):
+    if torch.cuda.is_available() and use_cuda:
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
@@ -51,7 +51,7 @@ def train(opt):
     mp = _mp.get_context("spawn")
     envs = MultipleEnvironments(opt.world, opt.stage, opt.action_type, opt.num_processes)
     model = PPO(envs.num_states, envs.num_actions)
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and use_cuda:
         model.cuda()
     model.share_memory()
     process = mp.Process(target=eval, args=(opt, model, envs.num_states, envs.num_actions))
@@ -60,7 +60,7 @@ def train(opt):
     [agent_conn.send(("reset", None)) for agent_conn in envs.agent_conns]
     curr_states = [agent_conn.recv() for agent_conn in envs.agent_conns]
     curr_states = torch.from_numpy(np.concatenate(curr_states, 0))
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and use_cuda:
         curr_states = curr_states.cuda()
     curr_episode = 0
     episode_plot = []
@@ -91,20 +91,22 @@ def train(opt):
             actions.append(action)
             old_log_policy = old_m.log_prob(action)
             old_log_policies.append(old_log_policy)
-            if torch.cuda.is_available():
+            if torch.cuda.is_available() and use_cuda:
                 [agent_conn.send(("step", act)) for agent_conn, act in zip(envs.agent_conns, action.cpu())]
             else:
                 [agent_conn.send(("step", act)) for agent_conn, act in zip(envs.agent_conns, action)]
 
             state, reward, done, info = zip(*[agent_conn.recv() for agent_conn in envs.agent_conns])
             state = torch.from_numpy(np.concatenate(state, 0))
-            if torch.cuda.is_available():
+            if torch.cuda.is_available() and use_cuda:
                 state = state.cuda()
                 reward = torch.cuda.FloatTensor(reward)
                 done = torch.cuda.FloatTensor(done)
+                #done = torch.cuda.FloatTensor(int(done))
             else:
                 reward = torch.FloatTensor(reward)
                 done = torch.FloatTensor(done)
+                #done = torch.FloatTensor(int(done))
             rewards.append(reward)
             dones.append(done)
             curr_states = state
@@ -143,7 +145,7 @@ def train(opt):
         np.savetxt("ppo_R_episode_{}.csv".format(start_datetime), np.array(R_plot), delimiter=",")
         np.savetxt("ppo_reward_episode_{}.csv".format(start_datetime), np.array(ep_reward_plot), delimiter=",")
         for i in range(opt.num_epochs):
-            indice = torch.randperm(opt.num_local_steps * opt.num_processes)
+            indice = torch.randperm(opt.num_local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
             for j in range(opt.batch_size):
                 batch_indices = indice[
                                 int(j * (opt.num_local_steps * opt.num_processes / opt.batch_size)): int((j + 1) * (
@@ -155,8 +157,8 @@ def train(opt):
                 ratio = torch.exp(new_log_policy - old_log_policies[batch_indices])
                 actor_loss = -torch.mean(torch.min(ratio * advantages[batch_indices],
                                                    torch.clamp(ratio, 1.0 - opt.epsilon, 1.0 + opt.epsilon) *
-                                                   advantages[
-                                                       batch_indices]))
+                                                   advantages[batch_indices]))# Clamps all elements in input into the range [ min, max ]. Letting min_value and max_value be min and max, respectively, this returns:
+
                 # critic_loss = torch.mean((R[batch_indices] - value) ** 2) / 2
                 critic_loss = F.smooth_l1_loss(R[batch_indices], value.squeeze())
                 entropy_loss = torch.mean(new_m.entropy())
@@ -166,8 +168,10 @@ def train(opt):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
+        if curr_episode>10000:
+            return
 
 
 if __name__ == "__main__":
     opt = get_args()
-    train(opt)
+    train(opt,use_cuda=True)
