@@ -56,6 +56,7 @@ def test(opt):
         state = torch.from_numpy(state)
         # env.render()
         print("not get")
+        print(info)
         if info["flag_get"]:
             print("World {} stage {} completed".format(opt.world, opt.stage))
             print("get")

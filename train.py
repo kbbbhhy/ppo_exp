@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument("--num_local_steps", type=int, default=512)
     parser.add_argument("--num_global_steps", type=int, default=5e6)
     parser.add_argument("--num_processes", type=int, default=8)
-    parser.add_argument("--save_interval", type=int, default=500, help="Number of steps between savings")
+    parser.add_argument("--save_interval", type=int, default=1000, help="Number of steps between savings")
     parser.add_argument("--max_actions", type=int, default=200, help="Maximum repetition steps in test phase")
     parser.add_argument("--log_path", type=str, default="tensorboard/ppo_super_mario_bros")
     parser.add_argument("--saved_path", type=str, default="trained_models")
@@ -66,6 +66,7 @@ def train(opt,use_cuda=True):
     episode_plot = []
     R_plot = []
     ep_reward_plot = []
+    a=set()
     start_datetime = datetime.datetime.now().strftime("%m-%d_%H-%M")
     while True:
         if curr_episode % opt.save_interval == 0 and curr_episode > 0:
@@ -168,6 +169,15 @@ def train(opt,use_cuda=True):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
+        print(info[0]["flag_get"])
+        if info[0]["flag_get"]==True:
+            a.add(curr_episode)
+            print('get')
+        if curr_episode>100:
+            if curr_episode-100 in a:
+                a.remove(curr_episode-100)
+            acc=len(a)/100
+            print('accuracy is {}'.format(acc))
         if curr_episode>10000:
             return
 
