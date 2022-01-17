@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--beta', type=float, default=0.01, help='entropy coefficient')
     parser.add_argument('--epsilon', type=float, default=0.2, help='parameter for Clipped Surrogate Objective')
     parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--critic_discount',type=float,default=1,help='discount factor for critic loss in loss function')
+    parser.add_argument('--critic_discount',type=float,default=0.5,help='discount factor for critic loss in loss function')
     parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument("--num_local_steps", type=int, default=512)
     parser.add_argument("--num_global_steps", type=int, default=5e6)
@@ -167,7 +167,7 @@ def train(opt,use_cuda=True):
                 total_loss = actor_loss + opt.critic_discount*critic_loss - opt.beta * entropy_loss
                 optimizer.zero_grad()
                 total_loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.8)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
         print(info[0]["flag_get"])
