@@ -66,6 +66,7 @@ def train(opt,use_cuda=True):
     curr_episode = 0
     episode_plot = []
     R_plot = []
+    acc_plot=[]
     ep_reward_plot = []
     a=set()
     start_datetime = datetime.datetime.now().strftime("%m-%d_%H-%M")
@@ -76,13 +77,14 @@ def train(opt,use_cuda=True):
             torch.save(model.state_dict(),
                        "{}/ppo_super_mario_bros_{}_{}_{}".format(opt.saved_path, opt.world, opt.stage, curr_episode))
         curr_episode += 1
-        episode_plot.append(int(curr_episode))
+        episode_plot.append(curr_episode)
         old_log_policies = []
         actions = []
         values = []
         states = []
         rewards = []
         dones = []
+        flag_get=False
         for _ in range(opt.num_local_steps):
             states.append(curr_states)
             logits, value = model(curr_states)
@@ -99,6 +101,8 @@ def train(opt,use_cuda=True):
                 [agent_conn.send(("step", act)) for agent_conn, act in zip(envs.agent_conns, action)]
 
             state, reward, done, info = zip(*[agent_conn.recv() for agent_conn in envs.agent_conns])
+            if info[0]["flag_get"]==True:
+                flag_get=True
             state = torch.from_numpy(np.concatenate(state, 0))
             if torch.cuda.is_available() and use_cuda:
                 state = state.cuda()
@@ -132,6 +136,7 @@ def train(opt,use_cuda=True):
         print("mean big R:", torch.mean(R).item())
         episode_reward_mean = torch.stack(rewards).mean(dim=1, keepdim=True).sum().item()
         print("mean reward", episode_reward_mean)
+        print(info)
         R_plot.append(torch.mean(R).item())
         ep_reward_plot.append(episode_reward_mean)
         plt.plot(episode_plot,R_plot,"r-")
@@ -170,8 +175,8 @@ def train(opt,use_cuda=True):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
-        print(info[0]["flag_get"])
-        if info[0]["flag_get"]==True:
+        print(flag_get)
+        if flag_get==True:
             a.add(curr_episode)
             print('get')
         if curr_episode>100:
@@ -179,6 +184,14 @@ def train(opt,use_cuda=True):
                 a.remove(curr_episode-100)
             acc=len(a)/100
             print('accuracy is {}'.format(acc))
+        else:
+            acc=0
+        acc_plot.append(acc)
+        plt.plot(episode_plot,acc_plot,"r-")
+        plt.xlabel('Episode')
+        plt.ylabel('Acc 100 recent')
+        plt.savefig('Flag_get_acc_{}.pdf'.format(start_datetime))
+        plt.close()
         if curr_episode>10000:
             return
 
