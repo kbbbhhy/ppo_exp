@@ -172,7 +172,7 @@ def train(opt,use_cuda=True):
                 total_loss = actor_loss + opt.critic_discount*critic_loss - opt.beta * entropy_loss
                 optimizer.zero_grad()
                 total_loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
         print(flag_get)
