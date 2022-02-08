@@ -69,6 +69,7 @@ def train(opt,use_cuda=True):
     acc_plot=[]
     ep_reward_plot = []
     a=set()
+    flag_get=False
     start_datetime = datetime.datetime.now().strftime("%m-%d_%H-%M")
     while True:
         if curr_episode % opt.save_interval == 0 and curr_episode > 0:
@@ -84,8 +85,12 @@ def train(opt,use_cuda=True):
         states = []
         rewards = []
         dones = []
-        flag_get=False
-        for _ in range(opt.num_local_steps):
+        #flag_get=False
+        if flag_get:
+            local_steps=int(opt.num_local_steps*0.9)
+        else:
+            local_steps=opt.num_local_steps
+        for _ in range(local_steps):
             states.append(curr_states)
             logits, value = model(curr_states)
             values.append(value.squeeze())
@@ -116,9 +121,10 @@ def train(opt,use_cuda=True):
             rewards.append(reward)
             dones.append(done)
             curr_states = state
-            if flag_get:
-                break
+            #if flag_get:
+            #    break
 
+        sample_now_tot=len(dones)
         _, next_value, = model(curr_states)
         next_value = next_value.squeeze()
         old_log_policies = torch.cat(old_log_policies).detach()
@@ -135,30 +141,32 @@ def train(opt,use_cuda=True):
         R = R[::-1]
         R = torch.cat(R).detach()
         advantages = R - values
-        print("mean big R:", torch.mean(R).item())
-        episode_reward_mean = torch.stack(rewards).mean(dim=1, keepdim=True).sum().item()
-        print("mean reward", episode_reward_mean)
-        print(info)
-        R_plot.append(torch.mean(R).item())
-        ep_reward_plot.append(episode_reward_mean)
-        plt.plot(episode_plot,R_plot,"r-")
-        plt.xlabel('Episode')
-        plt.ylabel('Mean R (PPO)')
-        plt.savefig("ppo_R_episode_{}.pdf".format(start_datetime))
-        plt.close()
-        plt.plot(episode_plot,ep_reward_plot,"r-")
-        plt.xlabel('Episode')
-        plt.ylabel('Mean Reward (PPO)')
-        plt.savefig("ppo_reward_episode_{}.pdf".format(start_datetime))
-        plt.close()
-        np.savetxt("ppo_R_episode_{}.csv".format(start_datetime), np.array(R_plot), delimiter=",")
-        np.savetxt("ppo_reward_episode_{}.csv".format(start_datetime), np.array(ep_reward_plot), delimiter=",")
+        #print("mean big R:", torch.mean(R).item())
+        #episode_reward_mean = torch.stack(rewards).mean(dim=1, keepdim=True).sum().item()
+        #print("mean reward", episode_reward_mean)
+        #print(info)
+        #R_plot.append(torch.mean(R).item())
+        #ep_reward_plot.append(episode_reward_mean)
+        #plt.plot(episode_plot,R_plot,"r-")
+        #plt.xlabel('Episode')
+        #plt.ylabel('Mean R (PPO)')
+        #plt.savefig("ppo_R_episode_{}.pdf".format(start_datetime))
+        #plt.close()
+        #plt.plot(episode_plot,ep_reward_plot,"r-")
+        #plt.xlabel('Episode')
+        #plt.ylabel('Mean Reward (PPO)')
+        #plt.savefig("ppo_reward_episode_{}.pdf".format(start_datetime))
+        #plt.close()
+        #np.savetxt("ppo_R_episode_{}.csv".format(start_datetime), np.array(R_plot), delimiter=",")
+        #np.savetxt("ppo_reward_episode_{}.csv".format(start_datetime), np.array(ep_reward_plot), delimiter=",")
         for i in range(opt.num_epochs):
-            indice = torch.randperm(opt.num_local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
+            indice = torch.randperm(sample_now_tot)
+            #indice = torch.randperm(opt.num_local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
             for j in range(opt.batch_size):
-                batch_indices = indice[
-                                int(j * (opt.num_local_steps * opt.num_processes / opt.batch_size)): int((j + 1) * (
-                                        opt.num_local_steps * opt.num_processes / opt.batch_size))]
+                batch_indices = indice[int(j*sample_now_tot/opt.batch_size):int((j+1)*sample_now_tot/opt.batch_size)]
+                #batch_indices = indice[
+                #                int(j * (opt.num_local_steps * opt.num_processes / opt.batch_size)): int((j + 1) * (
+                #                        opt.num_local_steps * opt.num_processes / opt.batch_size))]
                 logits, value = model(states[batch_indices])
                 new_policy = F.softmax(logits, dim=1)
                 new_m = Categorical(new_policy)
