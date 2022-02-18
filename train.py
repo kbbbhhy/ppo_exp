@@ -141,24 +141,6 @@ def train(opt,use_cuda=True):
         R = R[::-1]
         R = torch.cat(R).detach()
         advantages = R - values
-        #print("mean big R:", torch.mean(R).item())
-        #episode_reward_mean = torch.stack(rewards).mean(dim=1, keepdim=True).sum().item()
-        #print("mean reward", episode_reward_mean)
-        #print(info)
-        #R_plot.append(torch.mean(R).item())
-        #ep_reward_plot.append(episode_reward_mean)
-        #plt.plot(episode_plot,R_plot,"r-")
-        #plt.xlabel('Episode')
-        #plt.ylabel('Mean R (PPO)')
-        #plt.savefig("ppo_R_episode_{}.pdf".format(start_datetime))
-        #plt.close()
-        #plt.plot(episode_plot,ep_reward_plot,"r-")
-        #plt.xlabel('Episode')
-        #plt.ylabel('Mean Reward (PPO)')
-        #plt.savefig("ppo_reward_episode_{}.pdf".format(start_datetime))
-        #plt.close()
-        #np.savetxt("ppo_R_episode_{}.csv".format(start_datetime), np.array(R_plot), delimiter=",")
-        #np.savetxt("ppo_reward_episode_{}.csv".format(start_datetime), np.array(ep_reward_plot), delimiter=",")
         for i in range(opt.num_epochs):
             indice = torch.randperm(sample_now_tot)
             #indice = torch.randperm(opt.num_local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
@@ -186,7 +168,7 @@ def train(opt,use_cuda=True):
                 if flag_get:
                     clip_num=20
                 else:
-                    clip_num=1
+                    clip_num=0.5
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_num)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
