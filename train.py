@@ -168,7 +168,7 @@ def train(opt,use_cuda=True):
                 if flag_get:
                     clip_num=20
                 else:
-                    clip_num=0.5
+                    clip_num=1
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_num)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
