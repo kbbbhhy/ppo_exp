@@ -164,7 +164,6 @@ def train(opt,use_cuda=True):
                 total_loss = actor_loss + opt.critic_discount*critic_loss - opt.beta * entropy_loss
                 optimizer.zero_grad()
                 total_loss.backward()
-                clip_num=0
                 if flag_get:
                     clip_num=20
                 else:
