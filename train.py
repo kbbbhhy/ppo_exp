@@ -86,6 +86,7 @@ def train(opt,use_cuda=True):
         rewards = []
         dones = []
         #flag_get=False
+        #alreadychange=False
         if flag_get:
             local_steps=int(opt.num_local_steps*0.9)
         else:
@@ -142,13 +143,13 @@ def train(opt,use_cuda=True):
         R = torch.cat(R).detach()
         advantages = R - values
         for i in range(opt.num_epochs):
-            indice = torch.randperm(sample_now_tot)
-            #indice = torch.randperm(opt.num_local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
+            #indice = torch.randperm(sample_now_tot)
+            indice = torch.randperm(local_steps * opt.num_processes)# Returns a random permutation of integers from 0 to n - 1.
             for j in range(opt.batch_size):
-                batch_indices = indice[int(j*sample_now_tot/opt.batch_size):int((j+1)*sample_now_tot/opt.batch_size)]
-                #batch_indices = indice[
-                #                int(j * (opt.num_local_steps * opt.num_processes / opt.batch_size)): int((j + 1) * (
-                #                        opt.num_local_steps * opt.num_processes / opt.batch_size))]
+                #print(f'{sample_now_tot} and {opt.num_local_steps*opt.num_processes}')
+                #return
+                #batch_indices = indice[int(j*sample_now_tot/opt.batch_size):int((j+1)*sample_now_tot/opt.batch_size)]
+                batch_indices = indice[int(j * (local_steps * opt.num_processes / opt.batch_size)): int((j + 1) * (local_steps * opt.num_processes / opt.batch_size))]
                 logits, value = model(states[batch_indices])
                 new_policy = F.softmax(logits, dim=1)
                 new_m = Categorical(new_policy)
