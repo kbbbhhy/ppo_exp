@@ -72,6 +72,7 @@ def train(opt,use_cuda=True):
     flag_get=False
     start_datetime = datetime.datetime.now().strftime("%m-%d_%H-%M")
     while True:
+        local_flag_get=False
         if curr_episode % opt.save_interval == 0 and curr_episode > 0:
         #     torch.save(model.state_dict(),
         #                "{}/ppo_super_mario_bros_{}_{}".format(opt.saved_path, opt.world, opt.stage))
@@ -109,6 +110,7 @@ def train(opt,use_cuda=True):
             state, reward, done, info = zip(*[agent_conn.recv() for agent_conn in envs.agent_conns])
             if info[0]["flag_get"]==True:
                 flag_get=True
+                local_flag_get=True
             state = torch.from_numpy(np.concatenate(state, 0))
             if torch.cuda.is_available() and use_cuda:
                 state = state.cuda()
@@ -172,8 +174,8 @@ def train(opt,use_cuda=True):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_num)
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
-        print(flag_get)
-        if flag_get==True:
+        print(f"The information for flag_get in previous episodes is {flag_get}. The information for flag_get in the current episodes is {local_flag_get}.")
+        if local_flag_get==True:
             a.add(curr_episode)
             print('get')
         if curr_episode>100:
@@ -187,7 +189,7 @@ def train(opt,use_cuda=True):
         plt.plot(episode_plot,acc_plot,"r-")
         plt.xlabel('Episode')
         plt.ylabel('Acc 100 recent')
-        plt.savefig('Flag_get_acc_{}.pdf'.format(start_datetime))
+        plt.savefig(f'Flag_get_acc_{opt.world}_{opt.stage}_{start_datetime}.pdf')
         plt.close()
         if curr_episode>10000:
             return
