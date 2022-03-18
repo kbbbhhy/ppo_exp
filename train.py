@@ -134,11 +134,20 @@ def train(opt,use_cuda=True):
         actions = torch.cat(actions)
         values = torch.cat(values).detach()
         states = torch.cat(states)
+        if local_flag_get==True:
+            a.add(curr_episode)
+        if curr_episode>100:
+            if curr_episode-100 in a:
+                a.remove(curr_episode-100)
+            acc=len(a)/100
+        else:
+            acc=0
+        acc_plot.append(acc)
         gae = 0
         R = []
         for value, reward, done in list(zip(values, rewards, dones))[::-1]:
             gae = gae * opt.gamma * opt.tau
-            gae = gae + reward + opt.gamma * next_value.detach() * (1 - done) - value.detach()
+            gae = gae + reward + min(acc,int(local_flag_get)) + opt.gamma * next_value.detach() * (1 - done) - value.detach()
             next_value = value
             R.append(gae + value)
         R = R[::-1]
@@ -175,17 +184,7 @@ def train(opt,use_cuda=True):
                 optimizer.step()
         print("Episode: {}. Total loss: {}".format(curr_episode, total_loss))
         print(f"The information for flag_get in previous episodes is {flag_get}. The information for flag_get in the current episodes is {local_flag_get}.")
-        if local_flag_get==True:
-            a.add(curr_episode)
-            print('get')
-        if curr_episode>100:
-            if curr_episode-100 in a:
-                a.remove(curr_episode-100)
-            acc=len(a)/100
-            print('accuracy is {}'.format(acc))
-        else:
-            acc=0
-        acc_plot.append(acc)
+        print(f"The accuracy is {acc}.")
         plt.plot(episode_plot,acc_plot,"r-")
         plt.xlabel('Episode')
         plt.ylabel('Acc 100 recent')
